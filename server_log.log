@@ -70,3 +70,9 @@
 2025-05-06 16:14:13,437 - werkzeug - INFO -  * Debugger PIN: 128-656-712
 2025-05-06 16:14:17,528 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\sya_logistica_desktop.py', reloading
 2025-05-06 16:14:17,624 - werkzeug - INFO -  * Restarting with stat
+2025-05-06 16:14:18,358 - werkzeug - WARNING -  * Debugger is active!
+2025-05-06 16:14:18,361 - werkzeug - INFO -  * Debugger PIN: 128-656-712
+2025-05-06 18:48:58,066 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\main.py', reloading
+2025-05-06 18:48:58,204 - werkzeug - INFO -  * Restarting with stat
+2025-05-06 18:48:58,870 - werkzeug - WARNING -  * Debugger is active!
+2025-05-06 18:48:58,872 - werkzeug - INFO -  * Debugger PIN: 128-656-712
