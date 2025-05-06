@@ -32,3 +32,41 @@
 2025-05-06 14:02:02,037 - root - INFO - Datos recibidos: {'fecha': '2025/05/06', 'solicitante': 'JUAN PEREZ', 'orden_trabajo': 'OTMM-454', 'cliente': 'RDL', 'productos': [{'producto': 'LIJA AL AGUA', 'unidad': 'UND', 'cantidad': '25.00'}, {'producto': 'PUNTAS PARA DEMOLEDOR Y ROTOMARTILLO', 'unidad': 'UND', 'cantidad': '5.00'}, {'producto': 'PINTURA GLOSS NEGRA', 'unidad': 'GLN', 'cantidad': '5.00'}]}
 2025-05-06 14:02:02,063 - root - INFO - Requerimientos recibidos de JUAN PEREZ procesados exitosamente
 2025-05-06 14:02:02,064 - werkzeug - INFO - 127.0.0.1 - - [06/May/2025 14:02:02] "POST /api/enviar-requerimientos HTTP/1.1" 200 -
+2025-05-06 15:04:23,485 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\main.py', reloading
+2025-05-06 15:04:23,619 - werkzeug - INFO -  * Restarting with stat
+2025-05-06 15:04:24,329 - werkzeug - WARNING -  * Debugger is active!
+2025-05-06 15:04:24,329 - werkzeug - INFO -  * Debugger PIN: 128-656-712
+2025-05-06 15:05:56,535 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\sya_logistica_desktop.py', reloading
+2025-05-06 15:05:56,633 - werkzeug - INFO -  * Restarting with stat
+2025-05-06 15:05:57,319 - werkzeug - WARNING -  * Debugger is active!
+2025-05-06 15:05:57,321 - werkzeug - INFO -  * Debugger PIN: 128-656-712
+2025-05-06 15:05:58,371 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\sya_logistica_server.py', reloading
+2025-05-06 15:05:58,452 - werkzeug - INFO -  * Restarting with stat
+2025-05-06 15:05:59,153 - werkzeug - WARNING -  * Debugger is active!
+2025-05-06 15:05:59,155 - werkzeug - INFO -  * Debugger PIN: 128-656-712
+2025-05-06 15:06:19,448 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\sya_logistica_desktop.py', reloading
+2025-05-06 15:06:19,569 - werkzeug - INFO -  * Restarting with stat
+2025-05-06 15:06:20,246 - werkzeug - WARNING -  * Debugger is active!
+2025-05-06 15:06:20,247 - werkzeug - INFO -  * Debugger PIN: 128-656-712
+2025-05-06 15:06:23,310 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\sya_logistica_desktop.py', reloading
+2025-05-06 15:06:23,401 - werkzeug - INFO -  * Restarting with stat
+2025-05-06 15:06:24,005 - werkzeug - WARNING -  * Debugger is active!
+2025-05-06 15:06:24,007 - werkzeug - INFO -  * Debugger PIN: 128-656-712
+2025-05-06 15:06:27,069 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\sya_logistica_desktop.py', reloading
+2025-05-06 15:06:27,159 - werkzeug - INFO -  * Restarting with stat
+2025-05-06 15:06:27,773 - werkzeug - WARNING -  * Debugger is active!
+2025-05-06 15:06:27,773 - werkzeug - INFO -  * Debugger PIN: 128-656-712
+2025-05-06 15:19:29,201 - werkzeug - INFO - 127.0.0.1 - - [06/May/2025 15:19:29] "GET /api/materiales HTTP/1.1" 200 -
+2025-05-06 15:21:28,781 - root - INFO - Datos recibidos: {'fecha': '2025/05/06', 'solicitante': 'JUAN PEREZ', 'orden_trabajo': 'OT90', 'cliente': 'LAP', 'productos': [{'producto': 'ROTOMARTILLO DE 6.73 KG', 'unidad': 'UND', 'cantidad': '2.00'}, {'producto': 'AMOLADORA DE 9"', 'unidad': 'UND', 'cantidad': '2.00'}, {'producto': 'PINTURA DE TRAFICO AMARILLO ANYPSA', 'unidad': 'GLN', 'cantidad': '20.00'}]}
+2025-05-06 15:21:28,803 - root - INFO - Requerimientos recibidos de JUAN PEREZ procesados exitosamente
+2025-05-06 15:21:28,803 - werkzeug - INFO - 127.0.0.1 - - [06/May/2025 15:21:28] "POST /api/enviar-requerimientos HTTP/1.1" 200 -
+2025-05-06 16:14:01,495 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\sya_logistica_server.py', reloading
+2025-05-06 16:14:01,652 - werkzeug - INFO -  * Restarting with stat
+2025-05-06 16:14:02,550 - werkzeug - WARNING -  * Debugger is active!
+2025-05-06 16:14:02,556 - werkzeug - INFO -  * Debugger PIN: 128-656-712
+2025-05-06 16:14:12,729 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\sya_logistica_server.py', reloading
+2025-05-06 16:14:12,820 - werkzeug - INFO -  * Restarting with stat
+2025-05-06 16:14:13,437 - werkzeug - WARNING -  * Debugger is active!
+2025-05-06 16:14:13,437 - werkzeug - INFO -  * Debugger PIN: 128-656-712
+2025-05-06 16:14:17,528 - werkzeug - INFO -  * Detected change in 'C:\\Users\\kevin\\Desktop\\Python Projects\\smont_y_aragon_logistica\\logistica_code\\sya_logistica_desktop.py', reloading
+2025-05-06 16:14:17,624 - werkzeug - INFO -  * Restarting with stat
