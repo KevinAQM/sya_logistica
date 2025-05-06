@@ -1,0 +1,261 @@
+#:kivy 2.0.0
+
+<MaterialItem>:
+    orientation: 'horizontal'
+    size_hint_y: None
+    height: dp(60)
+    padding: dp(10)
+    spacing: dp(10)
+    canvas.before:
+        Color:
+            rgba: 0.95, 0.95, 0.95, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: 0.8, 0.8, 0.8, 1
+        Line:
+            rectangle: self.x, self.y, self.width, self.height
+            width: 1
+    
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_x: 0.6
+        
+        Label:
+            text: root.producto
+            font_size: dp(16)
+            color: 0, 0, 0, 1
+            text_size: self.width, None
+            halign: 'left'
+            shorten: True
+            shorten_from: 'right'
+    
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_x: 0.2
+        
+        Label:
+            text: root.unidad
+            font_size: dp(16)
+            color: 0, 0, 0, 1
+            halign: 'center'
+    
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_x: 0.2
+        
+        Label:
+            text: "{:.2f}".format(root.cantidad)
+            font_size: dp(16)
+            color: 0, 0, 0, 1
+            halign: 'center'
+
+<FormularioScreen>:
+    fecha_input: fecha_input
+    solicitante_input: solicitante_input
+    orden_trabajo_input: orden_trabajo_input
+    cliente_input: cliente_input
+    materiales_container: materiales_container
+    
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(20)
+        spacing: dp(10)
+        
+        # Encabezado
+        BoxLayout:
+            size_hint_y: None
+            height: dp(60)
+            padding: dp(10)
+            canvas.before:
+                Color:
+                    rgba: 0, 0.5, 0.8, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            
+            Label:
+                text: "Formulario de Requerimientos de Materiales"
+                font_size: dp(22)
+                bold: True
+                color: 1, 1, 1, 1
+        
+        # Campos principales
+        GridLayout:
+            cols: 2
+            spacing: dp(10)
+            padding: dp(10)
+            size_hint_y: None
+            height: dp(240)  # 4 filas de 60dp cada una
+            
+            # Fecha
+            Label:
+                text: "Fecha:"
+                font_size: dp(18)
+                color: 0, 0, 0, 1
+                size_hint_x: 0.3
+                halign: 'right'
+                valign: 'middle'
+                text_size: self.size
+            
+            TextInput:
+                id: fecha_input
+                multiline: False
+                font_size: dp(18)
+                hint_text: "AAAA/MM/DD"
+                size_hint_x: 0.7
+                padding: [dp(10), dp(10)]
+            
+            # Solicitante
+            Label:
+                text: "Solicitante:"
+                font_size: dp(18)
+                color: 0, 0, 0, 1
+                size_hint_x: 0.3
+                halign: 'right'
+                valign: 'middle'
+                text_size: self.size
+            
+            TextInput:
+                id: solicitante_input
+                multiline: False
+                font_size: dp(18)
+                hint_text: "Nombre del solicitante"
+                size_hint_x: 0.7
+                padding: [dp(10), dp(10)]
+            
+            # Orden de Trabajo
+            Label:
+                text: "Orden de Trabajo:"
+                font_size: dp(18)
+                color: 0, 0, 0, 1
+                size_hint_x: 0.3
+                halign: 'right'
+                valign: 'middle'
+                text_size: self.size
+            
+            TextInput:
+                id: orden_trabajo_input
+                multiline: False
+                font_size: dp(18)
+                hint_text: "Ej: OT90-25"
+                size_hint_x: 0.7
+                padding: [dp(10), dp(10)]
+            
+            # Cliente
+            Label:
+                text: "Cliente:"
+                font_size: dp(18)
+                color: 0, 0, 0, 1
+                size_hint_x: 0.3
+                halign: 'right'
+                valign: 'middle'
+                text_size: self.size
+            
+            TextInput:
+                id: cliente_input
+                multiline: False
+                font_size: dp(18)
+                hint_text: "Nombre del cliente"
+                size_hint_x: 0.7
+                padding: [dp(10), dp(10)]
+        
+        # Sección de materiales
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: dp(60)
+            padding: dp(10)
+            spacing: dp(10)
+            canvas.before:
+                Color:
+                    rgba: 0.9, 0.9, 0.9, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                
+                Label:
+                    text: "Lista de Materiales"
+                    font_size: dp(18)
+                    bold: True
+                    color: 0, 0, 0, 1
+                    size_hint_x: 0.7
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                
+                Button:
+                    text: "AGREGAR LISTA"
+                    font_size: dp(16)
+                    size_hint_x: 0.3
+                    background_color: 0, 0.7, 0, 1
+                    on_release: root.mostrar_popup_agregar_material()
+        
+        # Lista de materiales
+        BoxLayout:
+            orientation: 'vertical'
+            
+            # Encabezado de la lista
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                padding: [dp(10), 0]
+                canvas.before:
+                    Color:
+                        rgba: 0.8, 0.8, 0.8, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                
+                Label:
+                    text: "Producto"
+                    font_size: dp(16)
+                    bold: True
+                    color: 0, 0, 0, 1
+                    size_hint_x: 0.6
+                    halign: 'left'
+                    text_size: self.width, None
+                
+                Label:
+                    text: "Unidad"
+                    font_size: dp(16)
+                    bold: True
+                    color: 0, 0, 0, 1
+                    size_hint_x: 0.2
+                    halign: 'center'
+                
+                Label:
+                    text: "Cantidad"
+                    font_size: dp(16)
+                    bold: True
+                    color: 0, 0, 0, 1
+                    size_hint_x: 0.2
+                    halign: 'center'
+            
+            # Contenedor de la lista de materiales
+            ScrollView:
+                do_scroll_x: False
+                
+                BoxLayout:
+                    id: materiales_container
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: self.minimum_height
+                    spacing: dp(2)
+        
+        # Botón de enviar
+        BoxLayout:
+            size_hint_y: None
+            height: dp(80)
+            padding: dp(20)
+            
+            Button:
+                text: "ENVIAR REQUERIMIENTOS"
+                font_size: dp(20)
+                background_color: 0, 0.5, 0.8, 1
+                on_release: root.enviar_requerimientos()
