@@ -1,10 +1,13 @@
 import os
-import sys
-import requests
-import tkinter as tk
-from tkinter import messagebox, ttk
 import subprocess
+import sys
+import tkinter as tk
 from datetime import datetime
+from tkinter import messagebox, ttk
+import pandas as pd
+import requests
+import openpyxl
+from openpyxl.utils import get_column_letter
 
 # Intentar importar PIL para manejo de imágenes
 try:
@@ -59,6 +62,80 @@ def descargar_requerimientos():
         with open(ruta_archivo, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
+
+        # Ordenar el Excel por fecha de forma descendente
+        status_label.config(text="Ordenando datos por fecha...")
+        root.update()
+        
+        try:
+            # Leer el archivo Excel
+            df = pd.read_excel(ruta_archivo)
+            
+            # Hacer una copia de la columna fecha original
+            df['Fecha_original'] = df['Fecha']
+            
+            # Convertir la columna 'Fecha' a formato datetime para ordenamiento
+            df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
+            
+            # Ordenar por fecha descendente (más reciente primero)
+            df_ordenado = df.sort_values(by='Fecha', ascending=False)
+            
+            # Convertir las fechas a formato dd/mm/yyyy
+            df_ordenado['Fecha'] = df_ordenado['Fecha'].dt.strftime('%d/%m/%Y')
+            
+            # Si algunas fechas no se pudieron convertir, usar los valores originales
+            mascara_nulos = df_ordenado['Fecha'].isna()
+            if mascara_nulos.any():
+                df_ordenado.loc[mascara_nulos, 'Fecha'] = df_ordenado.loc[mascara_nulos, 'Fecha_original']
+            
+            # Eliminar la columna auxiliar
+            df_ordenado = df_ordenado.drop('Fecha_original', axis=1)
+            
+            # Guardar el archivo ordenado (sobreescribir)
+            df_ordenado.to_excel(ruta_archivo, index=False)
+            
+            # Autoajustar anchos de columnas
+            status_label.config(text="Ajustando anchos de columnas...")
+            root.update()
+            
+            try:
+                # Abrir el archivo Excel con openpyxl
+                wb = openpyxl.load_workbook(ruta_archivo)
+                hoja = wb.active
+                
+                # Autoajustar ancho de columnas basado en el contenido
+                for col in range(1, len(df_ordenado.columns) + 1):
+                    col_letra = get_column_letter(col)
+                    # Establecer un ancho mínimo para cada columna
+                    max_length = 10
+                    
+                    # Calcular el ancho basado en el título de la columna
+                    column_title = str(hoja.cell(row=1, column=col).value)
+                    if len(column_title) > max_length:
+                        max_length = len(column_title)
+                    
+                    # Calcular el ancho basado en el contenido de la columna
+                    for celda in range(2, min(20, hoja.max_row + 1)):  # Limitamos a 20 filas para optimizar
+                        valor_celda = str(hoja.cell(row=celda, column=col).value)
+                        if len(valor_celda) > max_length:
+                            max_length = len(valor_celda)
+                    
+                    # Ajustar el ancho (añadimos un margen de 2 caracteres)
+                    hoja.column_dimensions[col_letra].width = max_length + 2
+                
+                # Guardar el archivo con los ajustes
+                wb.save(ruta_archivo)
+                status_label.config(text="Columnas ajustadas correctamente")
+            except Exception as e:
+                status_label.config(text="Error al ajustar anchos de columnas")
+                print(f"Error al ajustar anchos de columnas: {e}")
+                # Continuamos aunque falle el ajuste de columnas
+            
+            status_label.config(text="Archivo ordenado y formateado")
+        except Exception as e:
+            status_label.config(text="Error al ordenar el archivo por fecha")
+            print(f"Error al ordenar el archivo: {e}")
+            # Continuamos aunque falle el ordenamiento
 
         # Actualizar estado y mostrar mensaje
         status_label.config(text=f"Archivo descargado: {nombre_archivo}")
@@ -143,7 +220,7 @@ def abrir_carpeta_descargas():
 # Crear la ventana principal
 root = tk.Tk()
 root.title("S&A - Sistema de Logística")
-root.geometry("450x520")
+root.geometry("450x540")
 root.resizable(True, True)
 root.configure(bg='#f0f0f0')
 
