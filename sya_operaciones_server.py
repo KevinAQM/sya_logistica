@@ -118,6 +118,19 @@ def inicializar_excel():
     else:
         logging.info(f"El archivo Excel de logística ya existe en: {LOGISTICA_EXCEL_FILE}")
 
+    # Inicializar CSV de Logística Materiales
+    if not os.path.exists(LOGISTICA_MATERIALES_CSV_PATH):
+        logging.info(f"Creando archivo CSV de materiales de logística en: {LOGISTICA_MATERIALES_CSV_PATH}")
+        try:
+            # Crear un DataFrame vacío con las cabeceras esperadas
+            df_materiales_logistica = pd.DataFrame(columns=['material', 'unidad'])
+            df_materiales_logistica.to_csv(LOGISTICA_MATERIALES_CSV_PATH, index=False)
+            logging.info(f"Archivo CSV de materiales de logística creado exitosamente con cabeceras.")
+        except Exception as e:
+            logging.error(f"No se pudo crear el archivo CSV de materiales de logística: {e}")
+    else:
+        logging.info(f"El archivo CSV de materiales de logística ya existe en: {LOGISTICA_MATERIALES_CSV_PATH}")
+
     # Crear directorio de fotos si no existe
     if not os.path.exists(FOTOS_VEHICULOS_DIR):
         os.makedirs(FOTOS_VEHICULOS_DIR)
@@ -435,6 +448,18 @@ def descargar_logistica_excel_flask():
     except Exception as e:
         logging.error(f"Error al generar descarga de Excel de logística: {str(e)}")
         return str(e), 500
+
+def descargar_bdd_logistica_flask():
+    """Descarga el archivo CSV de la base de datos de materiales de logística."""
+    try:
+        if not os.path.exists(LOGISTICA_MATERIALES_CSV_PATH):
+            logging.error(f"Archivo BDD logística no encontrado: {LOGISTICA_MATERIALES_CSV_PATH}")
+            return jsonify({"error": "Archivo BDD de logística no encontrado en el servidor."}), 404
+        logging.info(f"Intentando enviar archivo BDD de logística: {LOGISTICA_MATERIALES_CSV_PATH}")
+        return send_file(LOGISTICA_MATERIALES_CSV_PATH, as_attachment=True, download_name='logistica_materiales.csv')
+    except Exception as e:
+        logging.error(f"Error al generar descarga de CSV BDD de logística: {str(e)}")
+        return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
 
 
 def agregar_nuevo_material_csv(nombre_material, unidad):
@@ -954,6 +979,37 @@ def recibir_requerimientos_logistica():
 def descargar_requerimientos_logistica():
     """Descarga el archivo Excel de requerimientos de logística."""
     return descargar_logistica_excel_flask()
+
+@app.route('/api/logistica/descargar-bdd', methods=['GET'])
+def descargar_bdd_logistica():
+    """Descarga el archivo CSV de la base de datos de materiales de logística."""
+    return descargar_bdd_logistica_flask()
+
+@app.route('/api/logistica/subir-bdd', methods=['POST'])
+def subir_bdd_logistica():
+    """Sube (actualiza) el archivo CSV de la base de datos de materiales de logística."""
+    if 'file' not in request.files:
+        logging.warning("No se encontró 'file' en la solicitud de subida de BDD.")
+        return jsonify({"error": "No se encontró el archivo en la solicitud"}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        logging.warning("Nombre de archivo vacío en la solicitud de subida de BDD.")
+        return jsonify({"error": "Nombre de archivo vacío"}), 400
+    
+    if file and file.filename.endswith('.csv'):
+        try:
+            # Guardar el archivo, sobrescribiendo el existente
+            file.save(LOGISTICA_MATERIALES_CSV_PATH)
+            logging.info(f"Archivo BDD de logística '{file.filename}' subido y guardado como '{LOGISTICA_MATERIALES_CSV_PATH}'")
+            return jsonify({"status": "success", "message": "Base de datos de materiales actualizada correctamente."}), 200
+        except Exception as e:
+            logging.error(f"Error al guardar el archivo BDD de logística subido: {str(e)}")
+            return jsonify({"error": f"Error al guardar el archivo en el servidor: {str(e)}"}), 500
+    else:
+        logging.warning(f"Archivo no válido o tipo incorrecto para subida de BDD: {file.filename}")
+        return jsonify({"error": "Archivo no válido o tipo incorrecto. Se esperaba un archivo .csv"}), 400
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False) # debug=True para desarrollo
