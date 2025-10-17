@@ -7,6 +7,7 @@ import openpyxl
 from flask import Flask, request, jsonify, send_file
 import zipfile
 from flask_cors import CORS
+import chardet
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -15,6 +16,7 @@ CORS(app)  # Enable CORS for all routes
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EXCEL_FILE = os.path.join(BASE_DIR, "registros_trabajo.xlsx")
 REQUERIMIENTOS_EXCEL_FILE = os.path.join(BASE_DIR, "requerimientos_obra.xlsx")
+EXCEL_FILE_AREA_TECNICA = os.path.join(BASE_DIR, "registros_trabajo_area_tecnica.xlsx")
 MATERIALES_CSV_PATH = os.path.join(BASE_DIR, "operaciones_materiales.csv")
 EQUIPOS_CSV_PATH = os.path.join(BASE_DIR, "operaciones_equipos.csv")
 VEHICULOS_CSV_PATH = os.path.join(BASE_DIR, "operaciones_vehiculos.csv")
@@ -31,10 +33,52 @@ VEHICULOS_INFO_CSV_PATH = os.path.join(BASE_DIR, "aem_vehiculos.csv")
 # Archivos para el sistema de logística
 LOGISTICA_EXCEL_FILE = os.path.join(BASE_DIR, "sya_logistica_requerimientos.xlsx")
 LOGISTICA_MATERIALES_CSV_PATH = os.path.join(BASE_DIR, "logistica_materiales.csv")
+LOGISTICA_CLIENTES_CSV_PATH = os.path.join(BASE_DIR, "logistica_clientes.csv")
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
+
+def read_csv_with_encoding_detection(file_path):
+    """
+    Lee un archivo CSV detectando automáticamente la codificación.
+    Intenta primero UTF-8, luego iso-8859-1, y finalmente usa detección automática.
+    """
+    encodings_to_try = ['utf-8', 'iso-8859-1', 'latin1', 'cp1252']
+
+    for encoding in encodings_to_try:
+        try:
+            df = pd.read_csv(file_path, encoding=encoding)
+            logging.info(f"Archivo {file_path} leído exitosamente con codificación {encoding}")
+            return df
+        except UnicodeDecodeError:
+            continue
+        except Exception as e:
+            logging.warning(f"Error al leer {file_path} con codificación {encoding}: {str(e)}")
+            continue
+
+    # Si ninguna codificación funciona, intentar detección automática
+    try:
+        with open(file_path, 'rb') as file:
+            raw_data = file.read()
+            result = chardet.detect(raw_data)
+            detected_encoding = result['encoding']
+
+        if detected_encoding:
+            df = pd.read_csv(file_path, encoding=detected_encoding)
+            logging.info(f"Archivo {file_path} leído exitosamente con codificación detectada: {detected_encoding}")
+            return df
+    except Exception as e:
+        logging.error(f"Error en detección automática de codificación para {file_path}: {str(e)}")
+
+    # Como último recurso, intentar con errores='ignore'
+    try:
+        df = pd.read_csv(file_path, encoding='utf-8', errors='ignore')
+        logging.warning(f"Archivo {file_path} leído con UTF-8 ignorando errores")
+        return df
+    except Exception as e:
+        logging.error(f"Error final al leer {file_path}: {str(e)}")
+        raise e
 
 def inicializar_excel():
     """Inicializa los archivos Excel si no existen."""
@@ -106,8 +150,7 @@ def inicializar_excel():
         # Definir cabeceras
         cabeceras = [
             "Fecha", "Solicitante", "Orden de Trabajo", "Cliente",
-            "Producto", "Unidad", "Cantidad", "Stock", "Adquirido",
-            "Saldo", "Observaciones"
+            "Cantidad", "Unidad", "Producto", "Stock", "Timestamp"
         ]
 
         for col_num, header in enumerate(cabeceras, 1):
@@ -117,6 +160,47 @@ def inicializar_excel():
         logging.info(f"Archivo Excel de logística creado exitosamente")
     else:
         logging.info(f"El archivo Excel de logística ya existe en: {LOGISTICA_EXCEL_FILE}")
+
+    # Inicializar Excel de Área Técnica
+    if not os.path.exists(EXCEL_FILE_AREA_TECNICA):
+        logging.info(f"Creando archivo Excel de área técnica en: {EXCEL_FILE_AREA_TECNICA}")
+        wb_area_tecnica = openpyxl.Workbook()
+        
+        # Hoja 1: Reporte Principal
+        ws1 = wb_area_tecnica.active
+        ws1.title = "Reporte Principal"
+        headers_reporte = [
+            "Fecha", "Código Obra", "Nombre Ingeniero",
+            "Nombre Supervisor", "Actividad Principal",
+            "Supervisor Presente", "Avance Diario",
+            "Incidentes", "Plan Siguiente Día", "Observaciones"
+        ]
+        ws1.append(headers_reporte)
+        
+        # Hoja 2: Materiales Usados
+        ws2 = wb_area_tecnica.create_sheet(title="Materiales Usados")
+        headers_materiales = ["O.T", "FECHA", "MATERIAL", "UNIDAD", "CANTIDAD", "PRECIO UNIT.", "COSTO"]
+        ws2.append(headers_materiales)
+        
+        # Hoja 3: Equipos Usados
+        ws3 = wb_area_tecnica.create_sheet(title="Equipos Usados")
+        headers_equipos = ["O.T", "FECHA", "EQUIPO", "CODIGO", "H.T", "COSTO/HORA", "COSTO"]
+        ws3.append(headers_equipos)
+        
+        # Hoja 4: Vehículos Usados
+        ws4 = wb_area_tecnica.create_sheet(title="Vehículos Usados")
+        headers_vehiculos = ["O.T", "FECHA", "VEHICULO", "PLACA", "H.T", "COSTO/HORA", "COSTO"]
+        ws4.append(headers_vehiculos)
+        
+        # Hoja 5: Personal de Campo
+        ws5 = wb_area_tecnica.create_sheet(title="Personal de Campo")
+        headers_personal = ["O.T", "FECHA", "PERSONAL", "CATEGORIA", "COSTO/H.T", "COSTO/H.E", "H.T", "H.E", "COSTO"]
+        ws5.append(headers_personal)
+        
+        wb_area_tecnica.save(EXCEL_FILE_AREA_TECNICA)
+        logging.info(f"Archivo Excel de área técnica creado exitosamente")
+    else:
+        logging.info(f"El archivo Excel de área técnica ya existe en: {EXCEL_FILE_AREA_TECNICA}")
 
     # Inicializar CSV de Logística Materiales
     if not os.path.exists(LOGISTICA_MATERIALES_CSV_PATH):
@@ -181,7 +265,7 @@ def actualizar_cabeceras_equipos(ws, num_equipos):
     for i in range(ultimo_equipo + 1, num_equipos + 1):
         ws.cell(row=1, column=num_headers_actuales + 1, value=f"Equipo {i}")
         ws.cell(row=1, column=num_headers_actuales + 2, value=f"Cantidad {i}")
-        ws.cell(row=1, column=num_headers_actuales + 3, value=f"Propiedad {i}")
+        ws.cell(row=1, column=num_headers_actuales + 3, value=f"Ubicación {i}")
         num_headers_actuales += 3
 
 def actualizar_cabeceras_vehiculos(ws, num_vehiculos):
@@ -205,7 +289,7 @@ def actualizar_cabeceras_vehiculos(ws, num_vehiculos):
     for i in range(ultimo_vehiculo + 1, num_vehiculos + 1):
         ws.cell(row=1, column=num_headers_actuales + 1, value=f"Vehículo {i}")
         ws.cell(row=1, column=num_headers_actuales + 2, value=f"Placa {i}")
-        ws.cell(row=1, column=num_headers_actuales + 3, value=f"Propiedad {i}")
+        ws.cell(row=1, column=num_headers_actuales + 3, value=f"Combustible {i}")
         num_headers_actuales += 3
 
 def actualizar_cabeceras_personal(ws, num_personal):
@@ -303,7 +387,7 @@ def procesar_datos(datos):
             datos.get('nombre_ingeniero', '')
         ]
         for equipo in equipos:
-            fila_equipos.extend([equipo['nombre'], equipo['cantidad'], equipo['propiedad']])
+            fila_equipos.extend([equipo['nombre'], equipo['cantidad'], equipo['ubicacion']])
         ws_equipos.append(fila_equipos)
 
         # Procesar vehículos usados
@@ -315,7 +399,7 @@ def procesar_datos(datos):
             datos.get('nombre_ingeniero', '')
         ]
         for vehiculo in vehiculos:
-            fila_vehiculos.extend([vehiculo['nombre'], vehiculo['placa'], vehiculo['propiedad']])
+            fila_vehiculos.extend([vehiculo['nombre'], vehiculo['placa'], vehiculo['combustible']])
         ws_vehiculos.append(fila_vehiculos)
 
         # Procesar personal de campo
@@ -335,6 +419,129 @@ def procesar_datos(datos):
 
     except Exception as e:
         logging.error(f"Error al procesar datos: {str(e)}")
+
+
+def procesar_datos_area_tecnica(datos):
+    """Procesa los datos del reporte diario para el área técnica."""
+    try:
+        wb = openpyxl.load_workbook(EXCEL_FILE_AREA_TECNICA)
+        ws_reporte = wb["Reporte Principal"]
+        ws_materiales = wb["Materiales Usados"]
+        ws_equipos = wb["Equipos Usados"]
+        ws_vehiculos = wb["Vehículos Usados"]
+        ws_personal = wb["Personal de Campo"]
+
+        # Fecha para todas las hojas
+        fecha = datetime.strptime(datos.get('fecha', ''), '%d/%m/%Y').date()
+        codigo_obra = datos.get('codigo_obra', '')
+        
+        # Preparar fila de datos para "Reporte Principal" (igual que el original)
+        fila_reporte = [
+            fecha,
+            codigo_obra,
+            datos.get('nombre_ingeniero', ''),
+            datos.get('nombre_supervisor', ''),
+            datos.get('actividad_principal', ''),
+            'Sí' if datos.get('supervisor_presente', False) else 'No',
+            datos.get('avance_diario', ''),
+            datos.get('incidentes', ''),
+            datos.get('siguiente_dia', ''),
+            datos.get('observaciones', '')
+        ]
+        ws_reporte.append(fila_reporte)
+
+        # Procesar materiales usados (una fila por material)
+        materiales = datos.get('materiales_usados', [])
+        for material in materiales:
+            precio_unit = float(material.get('precio', 0))
+            cantidad = float(material.get('cantidad', 0))
+            costo = round(precio_unit * cantidad, 2)
+            
+            fila_material = [
+                codigo_obra,                      # O.T
+                fecha,                           # FECHA
+                material.get('nombre', ''),      # MATERIAL
+                material.get('unidad', ''),      # UNIDAD
+                cantidad,                        # CANTIDAD
+                precio_unit,                     # PRECIO UNIT.
+                costo                           # COSTO
+            ]
+            ws_materiales.append(fila_material)
+
+        # Procesar equipos usados (una fila por equipo)
+        equipos = datos.get('equipos_usados', [])
+        for equipo in equipos:
+            costo_hora = float(equipo.get('costo_hora', 0))
+            horas_trabajadas = float(equipo.get('cantidad', 0))  # En el reporte diario, 'cantidad' son las horas trabajadas
+            costo = round(costo_hora * horas_trabajadas, 2)
+            
+            fila_equipo = [
+                codigo_obra,                      # O.T
+                fecha,                           # FECHA
+                equipo.get('nombre', ''),        # EQUIPO
+                equipo.get('codigo', ''),        # CODIGO
+                horas_trabajadas,                # H.T
+                costo_hora,                      # COSTO/HORA
+                costo                           # COSTO
+            ]
+            ws_equipos.append(fila_equipo)
+
+        # Procesar vehículos usados (una fila por vehículo)
+        vehiculos = datos.get('vehiculos_usados', [])
+        for vehiculo in vehiculos:
+            costo_hora = float(vehiculo.get('costo_hora', 0))
+            horas_trabajadas = float(vehiculo.get('placa', 0))  # En el reporte diario, 'placa' son las horas trabajadas (según tu popup)
+            costo = round(costo_hora * horas_trabajadas, 2)
+            
+            fila_vehiculo = [
+                codigo_obra,                      # O.T
+                fecha,                           # FECHA
+                vehiculo.get('nombre', ''),       # VEHICULO
+                vehiculo.get('placa_real', ''),   # PLACA (la placa real del vehículo)
+                horas_trabajadas,                 # H.T
+                costo_hora,                       # COSTO/HORA
+                costo                            # COSTO
+            ]
+            ws_vehiculos.append(fila_vehiculo)
+
+        # Procesar personal de campo (una fila por personal)
+        personal_campo = datos.get('personal_de_campo', [])
+        for personal in personal_campo:
+            costo_ht = float(personal.get('costo_hora', 0))
+            costo_he = float(personal.get('costo_hora_extra', 0))
+            horas_extras_input = float(personal.get('horas_extras', 0))
+            
+            # Lógica para manejar horas extras negativas
+            if horas_extras_input < 0:
+                # Si las horas extras son negativas, se restan de las 8 horas trabajadas
+                horas_trabajadas = 8.0 + horas_extras_input  # Sumar porque horas_extras_input es negativo
+                horas_extras = 0.0
+            else:
+                # Si las horas extras son positivas o cero, funcionamiento normal
+                horas_trabajadas = 8.0
+                horas_extras = horas_extras_input
+            
+            # Calcular el costo total
+            costo_total = round((costo_ht * horas_trabajadas) + (costo_he * horas_extras), 2)
+            
+            fila_personal = [
+                codigo_obra,                           # O.T
+                fecha,                                # FECHA
+                personal.get('nombre_completo', ''), # PERSONAL
+                personal.get('categoria', ''),        # CATEGORIA
+                costo_ht,                            # COSTO/H.T
+                costo_he,                            # COSTO/H.E
+                horas_trabajadas,                    # H.T
+                horas_extras,                        # H.E
+                costo_total                          # COSTO
+            ]
+            ws_personal.append(fila_personal)
+
+        wb.save(EXCEL_FILE_AREA_TECNICA)
+        logging.info(f"Datos del área técnica recibidos de {datos.get('nombre_ingeniero', 'Unknown')} procesados exitosamente")
+
+    except Exception as e:
+        logging.error(f"Error al procesar datos del área técnica: {str(e)}")
 
 def procesar_requerimientos(datos):
     """Procesa los datos de requerimientos."""
@@ -371,6 +578,15 @@ def descargar_excel_flask():
         logging.error(f"Error al generar descarga de Excel: {str(e)}")
         return str(e), 500
 
+def descargar_excel_area_tecnica_flask():
+    """Descarga el archivo Excel del área técnica."""
+    try:
+        logging.info(f"Intentando enviar archivo de área técnica: {EXCEL_FILE_AREA_TECNICA}")
+        return send_file(EXCEL_FILE_AREA_TECNICA, as_attachment=True, download_name='registros_trabajo_area_tecnica.xlsx')
+    except Exception as e:
+        logging.error(f"Error al generar descarga de Excel de área técnica: {str(e)}")
+        return str(e), 500
+
 def descargar_requerimientos_excel_flask():
     """Descarga el archivo Excel de requerimientos."""
     try:
@@ -381,7 +597,7 @@ def descargar_requerimientos_excel_flask():
         return str(e), 500
 
 def procesar_logistica_requerimientos(datos):
-    """Procesa los datos de requerimientos de logística y los guarda en el Excel."""
+    """Procesa los datos de requerimientos de logística y los guarda en el Excel con ordenamiento por timestamp."""
     try:
         # Asegurar que el archivo Excel existe
         if not os.path.exists(LOGISTICA_EXCEL_FILE):
@@ -390,11 +606,10 @@ def procesar_logistica_requerimientos(datos):
             ws_logistica = wb_logistica.active
             ws_logistica.title = "Requerimientos"
 
-            # Definir cabeceras
+            # Definir cabeceras (archivo se creará manualmente con estas 9 columnas)
             cabeceras = [
                 "Fecha", "Solicitante", "Orden de Trabajo", "Cliente",
-                "Producto", "Unidad", "Cantidad", "Stock", "Adquirido",
-                "Saldo", "Observaciones"
+                "Cantidad", "Unidad", "Producto", "Stock", "Timestamp"
             ]
 
             for col_num, header in enumerate(cabeceras, 1):
@@ -407,34 +622,61 @@ def procesar_logistica_requerimientos(datos):
         wb = openpyxl.load_workbook(LOGISTICA_EXCEL_FILE)
         ws = wb["Requerimientos"]
 
-        # Obtener la última fila con datos
-        ultima_fila = ws.max_row
-
         # Datos comunes para todos los productos
-        fecha = datos.get('fecha', '')
+        fecha_original = datos.get('fecha', '')
         solicitante = datos.get('solicitante', '')
         orden_trabajo = datos.get('orden_trabajo', '')
         cliente = datos.get('cliente', '')
+        
+        # Crear timestamp actual para ordenamiento
+        timestamp_actual = datetime.now()
+        timestamp_str = timestamp_actual.strftime("%Y-%m-%d %H:%M:%S")
 
-        # Procesar cada producto en la lista
+        # Recopilar nuevas filas para insertar
+        nuevas_filas = []
         productos = datos.get('productos', [])
         for producto in productos:
-            # Incrementar el número de fila
-            ultima_fila += 1
+            nueva_fila = [
+                fecha_original,  # Mantener formato original por ahora
+                solicitante,
+                orden_trabajo,
+                cliente,
+                producto.get('cantidad', 0.0),
+                producto.get('unidad', ''),
+                producto.get('producto', ''),
+                '',  # Stock vacío
+                timestamp_str  # Timestamp para ordenamiento
+            ]
+            nuevas_filas.append(nueva_fila)
 
-            # Insertar datos en la fila
-            ws.cell(row=ultima_fila, column=1).value = fecha
-            ws.cell(row=ultima_fila, column=2).value = solicitante
-            ws.cell(row=ultima_fila, column=3).value = orden_trabajo
-            ws.cell(row=ultima_fila, column=4).value = cliente
-            ws.cell(row=ultima_fila, column=5).value = producto.get('producto', '')
-            ws.cell(row=ultima_fila, column=6).value = producto.get('unidad', '')
-            ws.cell(row=ultima_fila, column=7).value = producto.get('cantidad', 0.0)
-            # Las columnas 8, 9, 10 y 11 (Stock, Adquirido, Saldo y Observaciones) se dejan vacías
+        # Leer todas las filas existentes (excepto cabecera)
+        filas_existentes = []
+        for row_num in range(2, ws.max_row + 1):
+            fila = []
+            for col_num in range(1, 10):  # 9 columnas exactamente
+                cell_value = ws.cell(row=row_num, column=col_num).value
+                fila.append(cell_value if cell_value is not None else '')
+            filas_existentes.append(fila)
+
+        # Combinar filas existentes con nuevas filas
+        todas_las_filas = filas_existentes + nuevas_filas
+
+        # Ordenar por timestamp (columna 9) de manera descendente (más recientes primero)
+        todas_las_filas.sort(key=lambda x: x[8], reverse=True)
+
+        # Limpiar el contenido del archivo (mantener solo cabeceras)
+        for row_num in range(ws.max_row, 1, -1):
+            ws.delete_rows(row_num)
+
+        # Escribir todas las filas ordenadas
+        for fila in todas_las_filas:
+            ws.append(fila)
+
+        # La columna Timestamp ahora es visible y reemplaza a "Adquirido"
 
         # Guardar el archivo Excel
         wb.save(LOGISTICA_EXCEL_FILE)
-        logging.info(f"Requerimientos de logística recibidos de {solicitante} procesados exitosamente")
+        logging.info(f"Requerimientos de logística recibidos de {solicitante} procesados exitosamente con ordenamiento por timestamp")
         return True
     except Exception as e:
         logging.exception(f"Error al procesar requerimientos de logística: {str(e)}")
@@ -465,36 +707,36 @@ def descargar_bdd_logistica_flask():
 def agregar_nuevo_material_csv(nombre_material, unidad):
     """Agrega un nuevo material al archivo CSV."""
     try:
-        df = pd.read_csv(MATERIALES_CSV_PATH)
+        df = read_csv_with_encoding_detection(MATERIALES_CSV_PATH)
         nuevo_material = pd.DataFrame([{'nombre_material': nombre_material, 'unidad': unidad}])
         df = pd.concat([df, nuevo_material], ignore_index=True)
-        df.to_csv(MATERIALES_CSV_PATH, index=False)
+        df.to_csv(MATERIALES_CSV_PATH, index=False, encoding='utf-8')
         logging.info(f"Nuevo material '{nombre_material}' agregado a {MATERIALES_CSV_PATH}")
         return True
     except Exception as e:
         logging.error(f"Error al agregar nuevo material a CSV: {str(e)}")
         return False
 
-def agregar_nuevo_equipo_csv(nombre_equipo, propiedad):
+def agregar_nuevo_equipo_csv(nombre_equipo, ubicacion):
     """Agrega un nuevo equipo al archivo CSV."""
     try:
-        df = pd.read_csv(EQUIPOS_CSV_PATH)
-        nuevo_equipo = pd.DataFrame([{'nombre_equipo': nombre_equipo, 'propiedad': propiedad}])
+        df = read_csv_with_encoding_detection(EQUIPOS_CSV_PATH)
+        nuevo_equipo = pd.DataFrame([{'nombre_equipo': nombre_equipo, 'ubicacion': ubicacion}])
         df = pd.concat([df, nuevo_equipo], ignore_index=True)
-        df.to_csv(EQUIPOS_CSV_PATH, index=False)
+        df.to_csv(EQUIPOS_CSV_PATH, index=False, encoding='utf-8')
         logging.info(f"Nuevo equipo '{nombre_equipo}' agregado a {EQUIPOS_CSV_PATH}")
         return True
     except Exception as e:
         logging.error(f"Error al agregar nuevo equipo a CSV: {str(e)}")
         return False
 
-def agregar_nuevo_vehiculo_csv(nombre_vehiculo, placa, propiedad):
+def agregar_nuevo_vehiculo_csv(nombre_vehiculo, placa, combustible):
     """Agrega un nuevo vehículo al archivo CSV."""
     try:
-        df = pd.read_csv(VEHICULOS_CSV_PATH)
-        nuevo_vehiculo = pd.DataFrame([{'nombre_vehiculo': nombre_vehiculo, 'placa': placa, 'propiedad': propiedad}])
+        df = read_csv_with_encoding_detection(VEHICULOS_CSV_PATH)
+        nuevo_vehiculo = pd.DataFrame([{'nombre_vehiculo': nombre_vehiculo, 'placa': placa, 'combustible': combustible}])
         df = pd.concat([df, nuevo_vehiculo], ignore_index=True)
-        df.to_csv(VEHICULOS_CSV_PATH, index=False)
+        df.to_csv(VEHICULOS_CSV_PATH, index=False, encoding='utf-8')
         logging.info(f"Nuevo vehículo '{nombre_vehiculo}' agregado a {VEHICULOS_CSV_PATH}")
         return True
     except Exception as e:
@@ -504,7 +746,7 @@ def agregar_nuevo_vehiculo_csv(nombre_vehiculo, placa, propiedad):
 def agregar_nuevo_personal_csv(apellido_paterno, apellido_materno, nombres, categoria):
     """Agrega un nuevo personal al archivo CSV."""
     try:
-        df = pd.read_csv(PERSONAL_CSV_PATH)
+        df = read_csv_with_encoding_detection(PERSONAL_CSV_PATH)
         nuevo_personal = pd.DataFrame([{
             'AP. PATERNO': apellido_paterno,
             'AP. MATERNO': apellido_materno,
@@ -512,7 +754,7 @@ def agregar_nuevo_personal_csv(apellido_paterno, apellido_materno, nombres, cate
             'CATEGORIA': categoria
         }])
         df = pd.concat([df, nuevo_personal], ignore_index=True)
-        df.to_csv(PERSONAL_CSV_PATH, index=False)
+        df.to_csv(PERSONAL_CSV_PATH, index=False, encoding='utf-8')
         logging.info(f"Nuevo personal '{nombres} {apellido_paterno}' agregado a {PERSONAL_CSV_PATH}")
         return True
     except Exception as e:
@@ -530,10 +772,12 @@ def get_materiales():
     try:
         if not os.path.exists(MATERIALES_CSV_PATH):
             return jsonify({"error": f"No se encontró el archivo de materiales en {MATERIALES_CSV_PATH}"}), 404
-        df = pd.read_csv(MATERIALES_CSV_PATH)
+        df = read_csv_with_encoding_detection(MATERIALES_CSV_PATH)
         materiales = df.to_dict(orient='records')
+        logging.info("Materiales cargados exitosamente.")
         return jsonify(materiales)
     except Exception as e:
+        logging.error(f"Error al obtener materiales: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/equipos', methods=['GET'])
@@ -541,11 +785,13 @@ def get_equipos():
     """Obtiene la lista de equipos."""
     try:
         if not os.path.exists(EQUIPOS_CSV_PATH):
-             return jsonify({"error": f"No se encontró el archivo de equipos en {EQUIPOS_CSV_PATH}"}), 404
-        df = pd.read_csv(EQUIPOS_CSV_PATH)
+            return jsonify({"error": f"No se encontró el archivo de equipos en {EQUIPOS_CSV_PATH}"}), 404
+        df = read_csv_with_encoding_detection(EQUIPOS_CSV_PATH)
         equipos = df.to_dict(orient='records')
+        logging.info("Equipos cargados exitosamente.")
         return jsonify(equipos)
     except Exception as e:
+        logging.error(f"Error al obtener equipos: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/vehiculos', methods=['GET'])
@@ -554,10 +800,12 @@ def get_vehiculos():
     try:
         if not os.path.exists(VEHICULOS_CSV_PATH):
             return jsonify({"error": f"No se encontró el archivo de vehículos en {VEHICULOS_CSV_PATH}"}), 404
-        df = pd.read_csv(VEHICULOS_CSV_PATH)
+        df = read_csv_with_encoding_detection(VEHICULOS_CSV_PATH)
         vehiculos = df.to_dict(orient='records')
+        logging.info("Vehículos cargados exitosamente.")
         return jsonify(vehiculos)
     except Exception as e:
+        logging.error(f"Error al obtener vehículos: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/personal', methods=['GET'])
@@ -566,10 +814,12 @@ def get_personal():
     try:
         if not os.path.exists(PERSONAL_CSV_PATH):
             return jsonify({"error": f"No se encontró el archivo de personal en {PERSONAL_CSV_PATH}"}), 404
-        df = pd.read_csv(PERSONAL_CSV_PATH)
+        df = read_csv_with_encoding_detection(PERSONAL_CSV_PATH)
         personal = df.to_dict(orient='records')
+        logging.info("Personal de campo cargado exitosamente.")
         return jsonify(personal)
     except Exception as e:
+        logging.error(f"Error al obtener personal: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/materiales/new', methods=['POST'])
@@ -587,9 +837,9 @@ def new_material():
 def new_equipo():
     """Agrega un nuevo equipo."""
     data = request.json
-    if not data or 'nombre_equipo' not in data or 'propiedad' not in data:
-        return jsonify({"error": "Nombre de equipo y propiedad son requeridos"}), 400
-    if agregar_nuevo_equipo_csv(data['nombre_equipo'], data['propiedad']):
+    if not data or 'nombre_equipo' not in data or 'ubicacion' not in data:
+        return jsonify({"error": "Nombre de equipo y ubicacion son requeridos"}), 400
+    if agregar_nuevo_equipo_csv(data['nombre_equipo'], data['ubicacion']):
         return jsonify({"status": "success"}), 201
     else:
         return jsonify({"error": "Error al agregar nuevo equipo"}), 500
@@ -598,9 +848,9 @@ def new_equipo():
 def new_vehiculo():
     """Agrega un nuevo vehículo."""
     data = request.json
-    if not data or 'nombre_vehiculo' not in data or 'placa' not in data or 'propiedad' not in data:
-        return jsonify({"error": "Nombre de vehículo, placa y propiedad son requeridos"}), 400
-    if agregar_nuevo_vehiculo_csv(data['nombre_vehiculo'], data['placa'], data['propiedad']):
+    if not data or 'nombre_vehiculo' not in data or 'placa' not in data or 'combustible' not in data:
+        return jsonify({"error": "Nombre de vehículo, placa y combustible son requeridos"}), 400
+    if agregar_nuevo_vehiculo_csv(data['nombre_vehiculo'], data['placa'], data['combustible']):
         return jsonify({"status": "success"}), 201
     else:
         return jsonify({"error": "Error al agregar nuevo vehículo"}), 500
@@ -635,6 +885,7 @@ def recibir_datos():
     """Recibe los datos del reporte diario."""
     datos = request.json
     procesar_datos(datos)
+    procesar_datos_area_tecnica(datos)  # También procesar para área técnica
     return jsonify({"status": "success"})
 
 @app.route('/recibir-requerimientos', methods=['POST'])
@@ -649,6 +900,11 @@ def recibir_requerimientos_route():
 def descargar_excel_route():
     """Descarga el archivo Excel principal."""
     return descargar_excel_flask()
+
+@app.route('/descargar-excel-area-tecnica', methods=['GET'])
+def descargar_excel_area_tecnica_route():
+    """Descarga el archivo Excel del área técnica."""
+    return descargar_excel_area_tecnica_flask()
 
 @app.route('/descargar-requerimientos-excel', methods=['GET'])
 def descargar_requerimientos_excel_route():
@@ -839,7 +1095,7 @@ def get_conductores():
         if not os.path.exists(CONDUCTORES_CSV_PATH):
             return jsonify({"error": f"No se encontró el archivo de conductores"}), 404
 
-        df = pd.read_csv(CONDUCTORES_CSV_PATH)
+        df = read_csv_with_encoding_detection(CONDUCTORES_CSV_PATH)
         if 'conductor' in df.columns:
             conductores = df['conductor'].dropna().astype(str).tolist()
         else:
@@ -857,7 +1113,7 @@ def get_vehiculos_info():
     try:
         if not os.path.exists(VEHICULOS_INFO_CSV_PATH):
             return jsonify({"error": f"No se encontró el archivo de vehículos"}), 404
-        df = pd.read_csv(VEHICULOS_INFO_CSV_PATH)
+        df = read_csv_with_encoding_detection(VEHICULOS_INFO_CSV_PATH)
         if 'tipo_vehiculo' in df.columns and 'placa' in df.columns:
             vehiculos = df[['tipo_vehiculo', 'placa']].dropna().astype(str).to_dict('records')
             return jsonify(vehiculos)
@@ -951,13 +1207,27 @@ def obtener_materiales_logistica():
     """Devuelve la lista de materiales desde el archivo CSV de logística."""
     try:
         if os.path.exists(LOGISTICA_MATERIALES_CSV_PATH):
-            df = pd.read_csv(LOGISTICA_MATERIALES_CSV_PATH)
+            df = read_csv_with_encoding_detection(LOGISTICA_MATERIALES_CSV_PATH)
             materiales = df[['material', 'unidad']].to_dict('records')
             return jsonify(materiales)
         else:
             return jsonify({"error": "Archivo de materiales de logística no encontrado"}), 404
     except Exception as e:
         logging.exception(f"Error al obtener materiales de logística: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/logistica/clientes', methods=['GET'])
+def obtener_clientes_logistica():
+    """Devuelve la lista de clientes desde el archivo CSV de logística."""
+    try:
+        if os.path.exists(LOGISTICA_CLIENTES_CSV_PATH):
+            df = read_csv_with_encoding_detection(LOGISTICA_CLIENTES_CSV_PATH)
+            clientes = df['cliente'].tolist()
+            return jsonify(clientes)
+        else:
+            return jsonify({"error": "Archivo de clientes de logística no encontrado"}), 404
+    except Exception as e:
+        logging.exception(f"Error al obtener clientes de logística: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/logistica/enviar-requerimientos', methods=['POST'])
@@ -1010,6 +1280,184 @@ def subir_bdd_logistica():
     else:
         logging.warning(f"Archivo no válido o tipo incorrecto para subida de BDD: {file.filename}")
         return jsonify({"error": "Archivo no válido o tipo incorrecto. Se esperaba un archivo .csv"}), 400
+
+@app.route('/api/logistica/descargar-clientes', methods=['GET'])
+def descargar_clientes_logistica():
+    """Permite descargar el archivo CSV de clientes."""
+    try:
+        if os.path.exists(LOGISTICA_CLIENTES_CSV_PATH):
+            return send_file(LOGISTICA_CLIENTES_CSV_PATH, as_attachment=True, download_name="logistica_clientes.csv")
+        else:
+            return jsonify({"error": "Archivo de clientes no encontrado"}), 404
+    except Exception as e:
+        logging.exception(f"Error al descargar archivo de clientes: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/logistica/subir-clientes', methods=['POST'])
+def subir_clientes_logistica():
+    """Sube (actualiza) el archivo CSV de clientes de logística."""
+    if 'file' not in request.files:
+        logging.warning("No se encontró 'file' en la solicitud de subida de clientes.")
+        return jsonify({"error": "No se encontró el archivo en la solicitud"}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        logging.warning("Nombre de archivo vacío en la solicitud de subida de clientes.")
+        return jsonify({"error": "Nombre de archivo vacío"}), 400
+    
+    if file and file.filename.endswith('.csv'):
+        try:
+            # Guardar el archivo, sobrescribiendo el existente
+            file.save(LOGISTICA_CLIENTES_CSV_PATH)
+            logging.info(f"Archivo de clientes '{file.filename}' subido y guardado como '{LOGISTICA_CLIENTES_CSV_PATH}'")
+            return jsonify({"status": "success", "message": "Base de datos de clientes actualizada correctamente."}), 200
+        except Exception as e:
+            logging.error(f"Error al guardar el archivo de clientes subido: {str(e)}")
+            return jsonify({"error": f"Error al guardar el archivo en el servidor: {str(e)}"}), 500
+    else:
+        logging.warning(f"Archivo no válido o tipo incorrecto para subida de clientes: {file.filename}")
+        return jsonify({"error": "Archivo no válido o tipo incorrecto. Se esperaba un archivo .csv"}), 400
+
+# API endpoints para AEM (Área de Equipos y Maquinarias)
+@app.route('/api/aem/descargar-bdd/<tipo_bdd>', methods=['GET'])
+def descargar_bdd_aem(tipo_bdd):
+    """Descarga los archivos CSV de base de datos para AEM (conductores y vehículos)."""
+    try:
+        archivos_bdd_aem = {
+            'conductores': CONDUCTORES_CSV_PATH,
+            'vehiculos': VEHICULOS_INFO_CSV_PATH
+        }
+
+        if tipo_bdd not in archivos_bdd_aem:
+            return jsonify({"error": "Tipo de base de datos no válido. Use 'conductores' o 'vehiculos'"}), 400
+
+        archivo_path = archivos_bdd_aem[tipo_bdd]
+
+        if not os.path.exists(archivo_path):
+            logging.error(f"Archivo BDD AEM no encontrado: {archivo_path}")
+            return jsonify({"error": f"Archivo de base de datos {tipo_bdd} no encontrado en el servidor."}), 404
+
+        # Nombres de descarga personalizados
+        nombres_descarga = {
+            'conductores': 'aem_conductores.csv',
+            'vehiculos': 'aem_vehiculos.csv'
+        }
+
+        logging.info(f"Intentando enviar archivo BDD AEM ({tipo_bdd}): {archivo_path}")
+        return send_file(archivo_path, as_attachment=True, download_name=nombres_descarga[tipo_bdd])
+
+    except Exception as e:
+        logging.error(f"Error al generar descarga de CSV BDD AEM ({tipo_bdd}): {str(e)}")
+        return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
+
+@app.route('/api/aem/subir-bdd/<tipo_bdd>', methods=['POST'])
+def subir_bdd_aem(tipo_bdd):
+    """Sube (actualiza) los archivos CSV de base de datos para AEM."""
+    try:
+        archivos_bdd_aem = {
+            'conductores': CONDUCTORES_CSV_PATH,
+            'vehiculos': VEHICULOS_INFO_CSV_PATH
+        }
+
+        if tipo_bdd not in archivos_bdd_aem:
+            return jsonify({"error": "Tipo de base de datos no válido. Use 'conductores' o 'vehiculos'"}), 400
+
+        if 'file' not in request.files:
+            logging.warning(f"No se encontró 'file' en la solicitud de subida de BDD AEM ({tipo_bdd}).")
+            return jsonify({"error": "No se encontró el archivo en la solicitud"}), 400
+
+        file = request.files['file']
+
+        if file.filename == '':
+            logging.warning(f"Nombre de archivo vacío en la solicitud de subida de BDD AEM ({tipo_bdd}).")
+            return jsonify({"error": "Nombre de archivo vacío"}), 400
+
+        if file and file.filename.endswith('.csv'):
+            archivo_path = archivos_bdd_aem[tipo_bdd]
+            file.save(archivo_path)
+            logging.info(f"Archivo BDD AEM ({tipo_bdd}) '{file.filename}' subido y guardado como '{archivo_path}'")
+            return jsonify({"status": "success", "message": f"Base de datos de {tipo_bdd} AEM actualizada correctamente."}), 200
+        else:
+            logging.warning(f"Archivo no válido o tipo incorrecto para subida de BDD AEM ({tipo_bdd}): {file.filename}")
+            return jsonify({"error": "Archivo no válido o tipo incorrecto. Se esperaba un archivo .csv"}), 400
+
+    except Exception as e:
+        logging.error(f"Error al guardar el archivo BDD AEM ({tipo_bdd}) subido: {str(e)}")
+        return jsonify({"error": f"Error al guardar el archivo en el servidor: {str(e)}"}), 500
+
+# API endpoints para gestión de bases de datos CSV de operaciones
+@app.route('/api/operaciones/descargar-bdd/<tipo_bdd>', methods=['GET'])
+def descargar_bdd_operaciones(tipo_bdd):
+    """Descarga los archivos CSV de base de datos de operaciones."""
+    try:
+        archivos_bdd = {
+            'materiales': MATERIALES_CSV_PATH,
+            'equipos': EQUIPOS_CSV_PATH,
+            'vehiculos': VEHICULOS_CSV_PATH,
+            'personal': PERSONAL_CSV_PATH
+        }
+
+        if tipo_bdd not in archivos_bdd:
+            return jsonify({"error": "Tipo de base de datos no válido"}), 400
+
+        archivo_path = archivos_bdd[tipo_bdd]
+
+        if not os.path.exists(archivo_path):
+            logging.error(f"Archivo BDD operaciones no encontrado: {archivo_path}")
+            return jsonify({"error": f"Archivo de base de datos {tipo_bdd} no encontrado en el servidor."}), 404
+
+        # Nombres de descarga personalizados
+        nombres_descarga = {
+            'materiales': 'operaciones_materiales.csv',
+            'equipos': 'operaciones_equipos.csv',
+            'vehiculos': 'operaciones_vehiculos.csv',
+            'personal': 'operaciones_personal.csv'
+        }
+
+        logging.info(f"Intentando enviar archivo BDD de operaciones ({tipo_bdd}): {archivo_path}")
+        return send_file(archivo_path, as_attachment=True, download_name=nombres_descarga[tipo_bdd])
+
+    except Exception as e:
+        logging.error(f"Error al generar descarga de CSV BDD de operaciones ({tipo_bdd}): {str(e)}")
+        return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
+
+@app.route('/api/operaciones/subir-bdd/<tipo_bdd>', methods=['POST'])
+def subir_bdd_operaciones(tipo_bdd):
+    """Sube (actualiza) los archivos CSV de base de datos de operaciones."""
+    try:
+        archivos_bdd = {
+            'materiales': MATERIALES_CSV_PATH,
+            'equipos': EQUIPOS_CSV_PATH,
+            'vehiculos': VEHICULOS_CSV_PATH,
+            'personal': PERSONAL_CSV_PATH
+        }
+
+        if tipo_bdd not in archivos_bdd:
+            return jsonify({"error": "Tipo de base de datos no válido"}), 400
+
+        if 'file' not in request.files:
+            logging.warning(f"No se encontró 'file' en la solicitud de subida de BDD operaciones ({tipo_bdd}).")
+            return jsonify({"error": "No se encontró el archivo en la solicitud"}), 400
+
+        file = request.files['file']
+
+        if file.filename == '':
+            logging.warning(f"Nombre de archivo vacío en la solicitud de subida de BDD operaciones ({tipo_bdd}).")
+            return jsonify({"error": "Nombre de archivo vacío"}), 400
+
+        if file and file.filename.endswith('.csv'):
+            archivo_path = archivos_bdd[tipo_bdd]
+            file.save(archivo_path)
+            logging.info(f"Archivo BDD de operaciones ({tipo_bdd}) '{file.filename}' subido y guardado como '{archivo_path}'")
+            return jsonify({"status": "success", "message": f"Base de datos de {tipo_bdd} actualizada correctamente."}), 200
+        else:
+            logging.warning(f"Archivo no válido o tipo incorrecto para subida de BDD operaciones ({tipo_bdd}): {file.filename}")
+            return jsonify({"error": "Archivo no válido o tipo incorrecto. Se esperaba un archivo .csv"}), 400
+
+    except Exception as e:
+        logging.error(f"Error al guardar el archivo BDD de operaciones ({tipo_bdd}) subido: {str(e)}")
+        return jsonify({"error": f"Error al guardar el archivo en el servidor: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False) # debug=True para desarrollo

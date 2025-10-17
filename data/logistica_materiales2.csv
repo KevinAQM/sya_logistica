@@ -1,15 +1,15 @@
 ﻿item,material,unidad,costo_unitario,stock
-1,"caja de disco de corte de 4 1/2"" norton",und,64,0
-2,"caja de disco de corte de 9""",und,285,0
-3,"caja de disco de desbaste de 4 1/2""",und,55,0
-4,"caja de disco polifán de 4 1/2""",und,40,0
+"1,""caja de disco de corte de 4 1/2"""" norton"",und,64,0"
+"2,""caja de disco de corte de 9"""""",und,285,0"
+"3,""caja de disco de desbaste de 4 1/2"""""",und,55,0"
+"4,""caja de disco polifán de 4 1/2"""""",und,40,0"
 5,pares de zapato de cuero caña alta para soldador,und,140,0
 6,demoledor de 11kg,und,89,0
 7,rotomartillo de 6.73 kg,und,0,0
 8,puntas para demoledor y rotomartillo,und,0,0
 9,punta cincel para demoledor y rotomartillo,und,0,0
-10,"amoladora de 9""",und,0,0
-11,"disco de 9"" para concreto",und,0,0
+"10,""amoladora de 9"""""",und,0,0"
+"11,""disco de 9"""" para concreto"",und,0,0"
 12,pintura de trafico amarillo anypsa,gln,0,0
 13,disolvente especial para trafico anypsa,gln,0,0
 14,pintura gloss negra,gln,0,0

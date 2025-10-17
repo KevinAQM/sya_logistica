@@ -33,6 +33,8 @@ except ImportError:
 API_BASE_URL = "http://34.67.103.132:5000/api/logistica"
 REQUERIMIENTOS_FILENAME = "sya_logistica_requerimientos.xlsx"
 BDD_FILENAME = "logistica_materiales.csv"
+CLIENTES_FILENAME = "logistica_clientes.csv"
+ADMIN_PASSWORD = "syasya25"
 
 
 # Clase para manejar utilidades de rutas y archivos
@@ -237,6 +239,7 @@ class SyaLogisticaApp:
         # Variables para almacenar rutas de archivos
         self.ultimo_archivo = None
         self.ultimo_archivo_bdd = None
+        self.ultimo_archivo_clientes = None
         
         # Configuración del icono
         try:
@@ -348,6 +351,34 @@ class SyaLogisticaApp:
             style="Subir.TButton"
         )
         btn_subir_bdd.pack(side='left', padx=5, pady=5, expand=True, fill='x')
+        
+        # Sección Base de Datos Clientes
+        frame_clientes = ttk.LabelFrame(frame_botones_principal, text="Base de Datos Clientes (CSV)", padding=(10, 5))
+        frame_clientes.pack(pady=10, padx=10, fill='x')
+
+        btn_descargar_clientes = ttk.Button(
+            frame_clientes, 
+            text="Descargar Clientes", 
+            command=self.descargar_clientes, 
+            style="Descargar.TButton"
+        )
+        btn_descargar_clientes.pack(side='left', padx=5, pady=5, expand=True, fill='x')
+
+        btn_abrir_clientes = ttk.Button(
+            frame_clientes, 
+            text="Abrir Clientes", 
+            command=self.abrir_clientes, 
+            style="Abrir.TButton"
+        )
+        btn_abrir_clientes.pack(side='left', padx=5, pady=5, expand=True, fill='x')
+
+        btn_subir_clientes = ttk.Button(
+            frame_clientes, 
+            text="Subir Clientes", 
+            command=self.subir_clientes, 
+            style="Subir.TButton"
+        )
+        btn_subir_clientes.pack(side='left', padx=5, pady=5, expand=True, fill='x')
         
         # Sección General
         frame_general = ttk.LabelFrame(frame_botones_principal, text="General", padding=(10, 5))
@@ -507,8 +538,107 @@ class SyaLogisticaApp:
             self.actualizar_estado("Error al abrir archivo BB.DD.")
             messagebox.showerror("Error", f"Ocurrió un error al abrir el archivo BB.DD.:\n{e}")
     
+    def validar_contraseña_admin(self, operacion):
+        """Muestra un popup para validar la contraseña antes de operaciones sensibles."""
+        # Crear una nueva ventana para el popup
+        popup = tk.Toplevel(self.root)
+        popup.title("Validación de Contraseña")
+        popup.geometry("450x280")
+        popup.resizable(False, False)
+        popup.transient(self.root)
+        popup.grab_set()  # Hacer modal
+        
+        # Centrar el popup
+        popup.update_idletasks()
+        x = (popup.winfo_screenwidth() // 2) - (popup.winfo_width() // 2)
+        y = (popup.winfo_screenheight() // 2) - (popup.winfo_height() // 2)
+        popup.geometry(f"+{x}+{y}")
+        
+        # Variable para el resultado
+        resultado = {'autorizado': False}
+        
+        # Frame principal
+        main_frame = ttk.Frame(popup, padding="25")
+        main_frame.pack(fill='both', expand=True)
+        
+        # Título
+        titulo_label = ttk.Label(
+            main_frame, 
+            text=f"{operacion}",
+            font=('Arial', 12, 'bold')
+        )
+        titulo_label.pack(pady=(0, 15))
+        
+        # Mensaje
+        mensaje_label = ttk.Label(
+            main_frame, 
+            text="Esta operación requiere autorización.\nPor favor, ingrese la contraseña:",
+            justify='center',
+            font=('Arial', 10)
+        )
+        mensaje_label.pack(pady=(0, 20))
+        
+        # Campo de contraseña
+        password_var = tk.StringVar()
+        password_entry = ttk.Entry(
+            main_frame, 
+            textvariable=password_var, 
+            show="*", 
+            font=('Arial', 12),
+            width=25
+        )
+        password_entry.pack(pady=(0, 30))
+        password_entry.focus_set()
+        
+        # Frame para botones
+        buttons_frame = ttk.Frame(main_frame)
+        buttons_frame.pack(fill='x', pady=(10, 0))
+        
+        def validar():
+            if password_var.get() == ADMIN_PASSWORD:
+                resultado['autorizado'] = True
+                popup.destroy()
+            else:
+                messagebox.showerror("Error", "Contraseña incorrecta")
+                password_entry.delete(0, tk.END)
+                password_entry.focus_set()
+        
+        def cancelar():
+            resultado['autorizado'] = False
+            popup.destroy()
+        
+        # Botones con mejor tamaño y espaciado
+        btn_cancelar = ttk.Button(
+            buttons_frame, 
+            text="Cancelar", 
+            command=cancelar,
+            width=12
+        )
+        btn_cancelar.pack(side='left', padx=(20, 10), pady=10)
+        
+        btn_validar = ttk.Button(
+            buttons_frame, 
+            text="Validar", 
+            command=validar,
+            width=12
+        )
+        btn_validar.pack(side='right', padx=(10, 20), pady=10)
+        
+        # Bind Enter key para validar
+        password_entry.bind('<Return>', lambda e: validar())
+        
+        # Esperar a que se cierre el popup
+        popup.wait_window()
+        
+        return resultado['autorizado']
+    
     def subir_bdd(self):
         """Sube el archivo CSV de la base de datos de materiales al servidor."""
+        # Validar contraseña antes de proceder
+        if not self.validar_contraseña_admin("Subir Base de Datos de Materiales"):
+            self.actualizar_estado("Operación cancelada por el usuario")
+            return
+            
         if not self.ultimo_archivo_bdd or not os.path.exists(self.ultimo_archivo_bdd):
             # Intentar encontrar el archivo si no está en la variable global
             ruta_descargas = FileUtils.crear_carpeta_descargas()
@@ -536,14 +666,94 @@ class SyaLogisticaApp:
                 "El archivo de base de datos de materiales ha sido subido correctamente."
             )
 
+    def descargar_clientes(self):
+        """Descarga el archivo CSV de clientes desde el servidor."""
+        self.actualizar_estado("Descargando Clientes...")
+        
+        # Determinar ruta de descarga
+        ruta_descargas = FileUtils.crear_carpeta_descargas()
+        ruta_archivo_clientes = os.path.join(ruta_descargas, CLIENTES_FILENAME)
+        
+        # Descargar archivo
+        url = f"{API_BASE_URL}/descargar-clientes"
+        descarga_exitosa = APIClient.descargar_archivo(url, ruta_archivo_clientes, self.actualizar_estado)
+        
+        if descarga_exitosa:
+            self.actualizar_estado("Clientes descargados correctamente.")
+            messagebox.showinfo(
+                "Descarga Completada",
+                f"El archivo de clientes ha sido descargado en:\n{ruta_archivo_clientes}"
+            )
+        
+        self.ultimo_archivo_clientes = ruta_archivo_clientes
+        return ruta_archivo_clientes
+    
+    def abrir_clientes(self):
+        """Abre el último archivo CSV de clientes descargado."""
+        try:
+            if self.ultimo_archivo_clientes and os.path.exists(self.ultimo_archivo_clientes):
+                if FileUtils.abrir_archivo(self.ultimo_archivo_clientes):
+                    self.actualizar_estado(f"Archivo abierto: {os.path.basename(self.ultimo_archivo_clientes)}")
+            else:
+                ruta_descargas = FileUtils.crear_carpeta_descargas()
+                archivo_potencial = os.path.join(ruta_descargas, CLIENTES_FILENAME)
+
+                if os.path.exists(archivo_potencial):
+                    self.ultimo_archivo_clientes = archivo_potencial
+                    if FileUtils.abrir_archivo(self.ultimo_archivo_clientes):
+                        self.actualizar_estado(f"Archivo clientes abierto: {os.path.basename(self.ultimo_archivo_clientes)}")
+                else:
+                    messagebox.showinfo(
+                        "Información",
+                        "No hay archivo de clientes para abrir. Por favor, descargue primero el archivo de clientes."
+                    )
+                    self.actualizar_estado("No hay archivo de clientes para abrir")
+        except Exception as e:
+            self.actualizar_estado("Error al abrir archivo de clientes.")
+            messagebox.showerror("Error", f"Ocurrió un error al abrir el archivo de clientes:\n{e}")
+    
+    def subir_clientes(self):
+        """Sube el archivo CSV de clientes al servidor."""
+        # Validar contraseña antes de proceder
+        if not self.validar_contraseña_admin("Subir Base de Datos de Clientes"):
+            self.actualizar_estado("Operación cancelada por el usuario")
+            return
+            
+        if not self.ultimo_archivo_clientes or not os.path.exists(self.ultimo_archivo_clientes):
+            # Intentar encontrar el archivo si no está en la variable global
+            ruta_descargas = FileUtils.crear_carpeta_descargas()
+            archivo_potencial = os.path.join(ruta_descargas, CLIENTES_FILENAME)
+            if os.path.exists(archivo_potencial):
+                self.ultimo_archivo_clientes = archivo_potencial
+            else:
+                messagebox.showerror(
+                    "Error", 
+                    f"No se encuentra el archivo '{CLIENTES_FILENAME}'.\nPor favor, descárguelo o asegúrese de que exista en la carpeta de descargas."
+                )
+                self.actualizar_estado("Archivo de clientes no encontrado para subir")
+                return
+
+        self.actualizar_estado("Subiendo archivo de clientes...")
+        
+        # Subir archivo
+        url = f"{API_BASE_URL}/subir-clientes"
+        subida_exitosa = APIClient.subir_archivo(url, self.ultimo_archivo_clientes, self.actualizar_estado)
+        
+        if subida_exitosa:
+            self.actualizar_estado("Archivo de clientes subido correctamente.")
+            messagebox.showinfo(
+                "Carga Completada",
+                "El archivo de clientes ha sido subido correctamente."
+            )
+
 
 # Punto de entrada principal
 def main():
     """Inicializa y ejecuta la aplicación principal."""
     root = tk.Tk()
-    global app
     app = SyaLogisticaApp(root)
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()
