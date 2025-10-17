@@ -180,7 +180,7 @@ pip install -r requirements.txt
 ```bash
 # En sya_operaciones_server.py, cambiar:
 # SERVER_URL = "http://127.0.0.1:5000"  # Local
-# SERVER_URL = "http://34.67.103.132:5000"  # Producción
+# SERVER_URL = ""  # Producción
 ```
 
 ## 📱 Uso
@@ -330,7 +330,7 @@ En `main.py` y `sya_logistica_desktop.py`:
 
 ```python
 # Producción
-SERVER_URL = "http://34.67.103.132:5000"
+SERVER_URL = ""
 
 # Desarrollo local
 SERVER_URL = "http://127.0.0.1:5000"
